@@ -2,10 +2,10 @@ pipeline {
   agent any
 
   environment {
-    AWS_REGION = 'us-east-1'
-    BUCKET_NAME = 'my-lambda-code-bucket-123456'
+    AWS_REGION = 'eu-west-1'
+    BUCKET_NAME = 'sandbox-test-lambda-code-bucket'
     S3_KEY = 'lambda.zip'
-    ROLE_ARN = 'arn:aws:iam::<your-account-id>:role/lambda-exec-role'
+    ROLE_ARN = 'arn:aws:iam::985539772768:role/lambda-exec-role'
   }
 
   stages {
@@ -15,22 +15,27 @@ pipeline {
       }
     }
 
-    stage('Upload to S3') {
+    stage('Authenticate with AWS and Deploy') {
       steps {
-        sh 'aws s3 cp lambda.zip s3://${BUCKET_NAME}/${S3_KEY}'
-      }
-    }
+        withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+          
+          sh 'aws sts get-caller-identity'  // Just to test access
 
-    stage('Deploy Lambda with Terraform') {
-      steps {
-        git url: 'https://git.company.com/infra-repo.git'
-        dir('infra-repo/lambda') {
-          sh '''
-            terraform init
-            terraform apply -auto-approve \
-              -var="lambda_s3_key=${S3_KEY}" \
-              -var="lambda_role_arn=${ROLE_ARN}"
-          '''
+          // Upload to S3
+          sh "aws s3 cp lambda.zip s3://${BUCKET_NAME}/${S3_KEY}"
+
+          // Clone the Terraform repo
+          git url: 'https://github.com/rahimflash/lambda_test-app.git'
+
+          // Terraform Init & Apply
+          dir('lambda_test-app/lambda') {
+            sh """
+              terraform init
+              terraform apply -auto-approve \
+                -var="lambda_s3_key=${S3_KEY}" \
+                -var="lambda_role_arn=${ROLE_ARN}"
+            """
+          }
         }
       }
     }
