@@ -17,7 +17,7 @@ pipeline {
 
     stage('Authenticate with AWS and Deploy') {
       steps {
-        withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
+        withAWS(credentials: 'aws_creds', region: "${AWS_REGION}") {
           
           sh 'aws sts get-caller-identity'  // Just to test access
 
